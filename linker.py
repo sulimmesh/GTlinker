@@ -105,6 +105,8 @@ def sync(git, trello, issue, card, newer, config):
 		for label in labels:
 			if label["name"] in issue_names:
 				trello.addLabel(card["id"], label["id"])
+			if label["name"] == GIT:
+				trello.addLabel(card["id"], label["id"])
 	elif newer == "card":
 		new_state = None
 		status = card["list"]["name"]
@@ -139,21 +141,57 @@ def link():
 		for label in card["labels"]:
 			if GIT == label["name"]:
 				if not card["name"] in issue_titles:
-					pass
-					#add card as a github issue
-					#label it
-					#add all comments as github issue comments
+					label_list = []
+					for label in card["labels"]:
+						if not label["name"] == GIT:
+							label_list.append(label["name"])
+					title = card["name"]
+					body = card["desc"]
+					response = git.raiseIssue("Brewmaster", title, body, 
+						labels=label_list)
+					comments = trello.getCardComments(card["id"])
+					for comment in comments:
+						body = comment["data"]["text"]
+						git.comment("Brewmaster", response["number"],
+							body)	
 				else:
-					#add this to the shared_topic with name as the key
 					shared_topics[card["name"]] = [card]
+
+	lists = trello.getLists(config["trello_board"])
+	labels = trello.getLabels(config["trello_board"])
 	for issue in issues:
 		if not issue["title"] in card_names:
 			pass
 			#add issue as a trello card
 			#label it
+			name = issue["title"]
+			desc = issue["body"]
+			label_list = []
+			for label in issue["labels"]:
+				label_list.append(label["name"])
+			label_ids = []
+			for label in labels:
+				if label["name"] in label_list:
+					label_ids.append(label["id"])
+			list_name = None
+			if issue["state"] == "open":
+				if issue["comments"] > 0:
+					list_name = "Doing"
+				else:
+					list_name = "To Do"
+			else:
+				list_name = "Done"
+			list_id = None
+			for list in lists:
+				if list["name"] == list_name:
+					list_id = list["id"]
+			response = trello.addCard(name, desc, list_id, label_ids)
 			#add all comments as trello card comments
+			comments = git.getIssueComments("Brewmaster", issue["number"])
+			for comment in comments:
+				body = comment["body"]
+				trello.comment(response["id"], body)
 		else:
-			#append this issue to the shared_topics with name as the key
 			shared_topics[issue["title"]].append(issue)
 
 	"""	next check if each issue/card in the dictionary are synced
