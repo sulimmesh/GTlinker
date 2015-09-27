@@ -144,6 +144,7 @@ def sync(git, trello, issue, card, newer, config):
 def link():
 	config_yaml = open("config.yaml", "r")
 	config = yaml.load(config_yaml)
+	config_yaml.close()
 	trello_board = config["trello_board"]
 	git = Git(config["git_username"], config["git_email"], config["git_password"])
 	trello = Trello(config["trello_key"], config["trello_token"])
@@ -235,7 +236,6 @@ def link():
 			sync(git, trello, issue, card, "issue", config)
 		elif card_time > issue_time:
 			sync(git, trello, issue, card, "card", config)
-
 
 def main(argv):
 	if len(argv) > 1:
