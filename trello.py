@@ -11,6 +11,12 @@ class Trello(object):
 		}
 		self.base_url = "https://api.trello.com/1/"
 
+	def getLabels(self, board):
+		url = self.base_url+"boards/"+board+"/cards"
+		url += "?" + urlencode(self._auth)
+		request = requests.get(url)
+		return request.json()	
+
 	def getCards(self, board):
 		url = self.base_url+"boards/"+board+"/cards"
 		url += "?" + urlencode(self._auth)
