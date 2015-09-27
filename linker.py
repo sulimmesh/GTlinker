@@ -77,14 +77,47 @@ def sync(git, trello, issue, card, newer, config):
 		if not item[0] in issue_comments_list:
 			git.comment("Brewmaster", issue["number"], item[0])
 
+	lists = trello.getLists(config["trello_board"])
+	labels = trello.getLabels(config["trello_board"])
 	if newer == "issue":
-		#change position
-		#change labels
-		pass
+		list_id = None
+		status = issue["state"]
+		if status == "open":
+			target_list = None
+			if len(issue_comments)+len(issue_events) > 0:
+				target_list = "To Do"
+			else:
+				target_list = "Doing"
+			for list in lists:
+				if list["name"] == target_list:
+					list_id = list["id"]
+		if status == "closed":
+			target_list = "closed"
+			for list in lists:
+				if list["name"] == target_list:
+					list_id = list["id"]
+		trello.moveCard(card["id"], list_id)
+
+		issue_labels = issue["labels"]
+		issue_names = []
+		for label in issue_labels:
+			issue_names.append(label["name"])
+		for label in labels:
+			if label["name"] in issue_names:
+				trello.addLabel(card["id"], label["id"])
 	elif newer == "card":
-		#change state
-		#change labels
-		pass
+		new_state = None
+		status = card["list"]["name"]
+		if status == "Done":
+			new_state = "closed"
+		else:
+			new_state = "open"
+
+		label_names= []
+		for label in labels:
+			label_names.append(label["name"])
+		git.updateIssue("Brewmaster", issue["number"], labels=label_names, 
+			state=new_state)
 
 def link():
 	config_yaml = open("config.yaml", "r")

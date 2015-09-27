@@ -12,10 +12,25 @@ class Trello(object):
 		self.base_url = "https://api.trello.com/1/"
 
 	def getLabels(self, board):
-		url = self.base_url+"boards/"+board+"/cards"
+		url = self.base_url+"boards/"+board+"/labels"
 		url += "?" + urlencode(self._auth)
 		request = requests.get(url)
 		return request.json()	
+
+	def addLabel(self, card, label):
+		url = self.base_url+"cards/"+card+"/idLabels"
+		url += "?" + urlencode(self._auth)
+		payload = {}
+		payload["value"] = label
+		request = requests.put(url)
+		return request.json()
+
+
+	def getLists(self, board):
+		url = self.base_url+"boards/"+board+"/lists"
+		url += "?" + urlencode(self._auth)
+		request = requests.get(url)
+		return request.json()		
 
 	def getCards(self, board):
 		url = self.base_url+"boards/"+board+"/cards"
