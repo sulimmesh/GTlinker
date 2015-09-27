@@ -7,6 +7,12 @@ class Git(object):
 		self._password = password
 		self.base_url = "https://api.github.com/"
 
+	def getCommit(self, repo, commit):
+		url = self.base_url+"repos/"+self._username+"/"+repo+"/commits"+commit
+		request = requests.get(url, auth=(self._username, self._password))
+		commit = request.json()
+		return commit		
+
 	def getIssues(self, repo):
 		url = self.base_url+"repos/"+self._username+"/"+repo+"/issues"
 		request = requests.get(url, auth=(self._username, self._password))
@@ -55,8 +61,14 @@ class Git(object):
 	def getIssueComments(self, repo, issue):
 		url = self.base_url+"repos/"+self._username+"/"+repo+"/issues/"+issue+"/comments"
 		request = requests.get(url, auth=(self._username, self._password))
-		comment = request.json()
+		comments = request.json()
 		return comments
+
+	def getIssueEvents(self, repo, issue):
+		url = self.base_url+"repos/"+self._username+"/"+repo+"/issues/"+issue+"/events"
+		request = requests.get(url, auth=(self._username, self._password))
+		events = request.json()
+		return events
 
 	def comment(self, repo, issue, body, comment_id=None):
 		url = self.base_url+"repos/"+self._username+"/"+repo+"/issues/"+issue+"/comments"

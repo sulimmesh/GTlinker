@@ -56,10 +56,12 @@ class Trello(object):
 		request = requests.put(url)
 		return request.json()
 
-	def addComment(self, card, body):
+	def comment(self, card, body):
 		url = self.base_url+"cards/"+card+"/actions/comments"
 		url += "?" + urlencode(self._auth)
 		payload = {}
 		payload["text"] = body
 		request = requests.post(url)
 		return request.json()
+
+
