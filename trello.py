@@ -22,7 +22,7 @@ class Trello(object):
 		url += "?" + urlencode(self._auth)
 		payload = {}
 		payload["value"] = label
-		request = requests.put(url)
+		request = requests.put(url, data=payload)
 		return request.json()
 
 
@@ -58,7 +58,6 @@ class Trello(object):
 		payload["desc"] = desc
 		payload["idList"] = idList
 		payload["idLabels"] = idLabels
-		request = requests.get(url)
 		request = requests.post(url,
 			data=payload)
 		return request.json()
@@ -68,7 +67,7 @@ class Trello(object):
 		url += "?" + urlencode(self._auth)
 		payload = {}
 		payload["value"] = list_id
-		request = requests.put(url)
+		request = requests.put(url, data=payload)
 		return request.json()
 
 	def comment(self, card, body):
@@ -76,7 +75,7 @@ class Trello(object):
 		url += "?" + urlencode(self._auth)
 		payload = {}
 		payload["text"] = body
-		request = requests.post(url)
+		request = requests.post(url, data=payload)
 		return request.json()
 
 

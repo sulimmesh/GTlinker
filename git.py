@@ -1,4 +1,5 @@
 import requests
+import json
 
 class Git(object):
 	def __init__(self, username, email, password):
@@ -8,7 +9,7 @@ class Git(object):
 		self.base_url = "https://api.github.com/"
 
 	def getCommit(self, repo, commit):
-		url = self.base_url+"repos/"+self._username+"/"+repo+"/commits"+commit
+		url = self.base_url+"repos/"+self._username+"/"+repo+"/commits/"+commit
 		request = requests.get(url, auth=(self._username, self._password))
 		commit = request.json()
 		return commit		
@@ -38,7 +39,7 @@ class Git(object):
 			for label in labels:
 				payload["labels"].append(label)
 		request = requests.post(url, auth=(self._username, self._password),
-			data=payload)
+			data=json.dumps(payload))
 		return request.json()
 
 	def updateIssue(self, repo, issue, title=None, body=None, 
@@ -55,7 +56,7 @@ class Git(object):
 			for label in labels:
 				payload["labels"].append(label)
 		request = requests.post(url, auth=(self._username, self._password),
-			data=payload)
+			data=json.dumps(payload))
 		return request.json()
 
 	def getIssueComments(self, repo, issue):
@@ -77,7 +78,7 @@ class Git(object):
 		payload = {}
 		payload["body"] = body
 		request = requests.post(url, auth=(self._username, self._password), 
-			data=payload)
+			data=json.dumps(payload))
 		comment = request.json()
 		return comment
 

@@ -21,7 +21,10 @@ Q = "Question"
 def sync(git, trello, issue, card, newer, config):
 	#first update comments both ways. No comment deletion yet.
 	issue_comments_list = []
-	issue_comments_list.append(issue["body"])
+	if len(issue["body"]) > 0:
+		created = issue["created_at"]
+		created = datetime.strptime(created,"%Y-%m-%dT%H:%M:%SZ")
+		issue_comments_list.append([issue["body"], created])
 	issue_comments = git.getIssueComments("Brewmaster", str(issue["number"]))
 	issue_events = git.getIssueEvents("Brewmaster", str(issue["number"]))
 	for event in issue_events:
@@ -30,26 +33,28 @@ def sync(git, trello, issue, card, newer, config):
 		text = ""
 		if event["event"] == "referenced":
 			commit = event["commit_id"]
-			text += "referenced in "+commit[:6]+"... on"+str(time.date())+"\n"
+			text += "referenced in "+commit[:6]+"... on "+str(time.date())+"\n"
 			commit = git.getCommit("Brewmaster", commit)
-			text += commit["message"]+" - "+commit["author"]["name"]
+			text += commit["commit"]["message"]+" - "+commit["commit"]["committer"]["name"]
 			issue_comments_list.append([text,time])
 		elif event["event"] == "assigned":
 			assignee = event["assignee"]["login"]
 			name = None
 			for item in config["git_to_trello"]:
-				if assignee in items.keys():
+				if assignee in item.keys():
 					name = item[assignee]
 			text = ""
 			text += "Assign to "+name+" on "+str(time.date())
+			issue_comments_list.append([text,time])
 		elif event["event"] == "unassigned":
 			assignee = event["assignee"]["login"]
 			name = None
 			for item in config["git_to_trello"]:
-				if assignee in items.keys():
+				if assignee in item.keys():
 					name = item[assignee]
 			text = ""
 			text += "Unassign to "+name+" on "+str(time.date())
+			issue_comments_list.append([text,time])
 
 	for comment in issue_comments:
 		text = comment["body"]
@@ -62,20 +67,32 @@ def sync(git, trello, issue, card, newer, config):
 	card_comments_list = []
 	card_comments = trello.getCardComments(card["id"])
 	for comment in card_comments:
-		text = comments["data"]["text"]
-		time = comments["date"]
+		text = comment["data"]["text"]
+		time = comment["date"]
 		time = datetime.strptime(time,"%Y-%m-%dT%H:%M:%S.%fZ")
 		card_comments_list.append([text,time])
 
 	card_comments_list.sort(key = lambda row: row[1])
 
 	for item in issue_comments_list:
-		if not item[0] in card_comments_list:
+		if len(card_comments_list) > 0:
+			new_list = []
+			for comment in card_comments_list:
+				new_list.append(comment[0])
+			if not item[0] in new_list:
+				trello.comment(card["id"], item[0])
+		else:
 			trello.comment(card["id"], item[0])
 
 	for item in card_comments_list:
-		if not item[0] in issue_comments_list:
-			git.comment("Brewmaster", issue["number"], item[0])
+		if len(issue_comments_list) > 0:
+			new_list = []
+			for comment in issue_comments_list:
+				new_list.append(comment[0])
+			if not item[0] in new_list:
+				response = git.comment("Brewmaster", str(issue["number"]), item[0])
+		else:
+			git.comment("Brewmaster", str(issue["number"]), item[0])
 
 	lists = trello.getLists(config["trello_board"])
 	labels = trello.getLabels(config["trello_board"])
@@ -103,22 +120,25 @@ def sync(git, trello, issue, card, newer, config):
 		for label in issue_labels:
 			issue_names.append(label["name"])
 		for label in labels:
-			if label["name"] in issue_names:
+			if label["name"].lower() in issue_names:
 				trello.addLabel(card["id"], label["id"])
 			if label["name"] == GIT:
 				trello.addLabel(card["id"], label["id"])
 	elif newer == "card":
 		new_state = None
-		status = card["list"]["name"]
+		status = card["idList"]
+		for list_id in lists:
+			if list_id["id"] == status:
+				status = list_id["name"]
 		if status == "Done":
 			new_state = "closed"
 		else:
 			new_state = "open"
 
-		label_names= []
-		for label in labels:
+		label_names = []
+		for label in card["labels"]:
 			label_names.append(label["name"])
-		git.updateIssue("Brewmaster", issue["number"], labels=label_names, 
+		git.updateIssue("Brewmaster", str(issue["number"]), labels=label_names, 
 			state=new_state)
 
 def link():
@@ -155,13 +175,12 @@ def link():
 						git.comment("Brewmaster", response["number"],
 							body)	
 				else:
-					shared_topics[card["name"]] = [card]
+					shared_topics[str(card["name"])] = [card]
 
 	lists = trello.getLists(config["trello_board"])
 	labels = trello.getLabels(config["trello_board"])
 	for issue in issues:
 		if not issue["title"] in card_names:
-			pass
 			#add issue as a trello card
 			#label it
 			name = issue["title"]
@@ -171,7 +190,9 @@ def link():
 				label_list.append(label["name"])
 			label_ids = []
 			for label in labels:
-				if label["name"] in label_list:
+				if label["name"].lower() in label_list:
+					label_ids.append(label["id"])
+				if label["name"] == GIT:
 					label_ids.append(label["id"])
 			list_name = None
 			if issue["state"] == "open":
@@ -187,7 +208,7 @@ def link():
 					list_id = list["id"]
 			response = trello.addCard(name, desc, list_id, label_ids)
 			#add all comments as trello card comments
-			comments = git.getIssueComments("Brewmaster", issue["number"])
+			comments = git.getIssueComments("Brewmaster", str(issue["number"]))
 			for comment in comments:
 				body = comment["body"]
 				trello.comment(response["id"], body)
@@ -220,10 +241,9 @@ def main(argv):
 	if len(argv) > 1:
 		#initialize some variables
 		pass
-	link()
-	#scheduler = BlockingScheduler()
-	#scheduler.add_job(link, "cron", minute=58, second=0, id="link_job")
-	#scheduler.start()
+	scheduler = BlockingScheduler()
+	scheduler.add_job(link, "interval", hours=1, id="link_job")
+	scheduler.start()
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
